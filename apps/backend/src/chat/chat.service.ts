@@ -40,7 +40,7 @@ export class ChatService {
       apiKey: 'ollama', // Ollama doesn't need a real key
     });
 
-    this.model = process.env.OLLAMA_MODEL || 'qwen3:30b';
+    this.model = process.env.OLLAMA_MODEL || 'qwen3.5:35b';
 
     // Define tool metadata matching Unit 3 tool registrations.
     // Only model-visible tools are included (visibility includes 'model').
