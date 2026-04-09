@@ -1,7 +1,8 @@
 node_modules
 dist
 .env
-.env.*
+.env.local
+!.env.example
 
 # IDE
 .idea
@@ -16,3 +17,15 @@ Thumbs.db
 
 # Build
 *.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Coverage
+coverage
+
+# Temp
+.tmp
+*.tmp
