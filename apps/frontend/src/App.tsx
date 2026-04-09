@@ -28,14 +28,11 @@ export function App() {
   }, [tools]);
 
   return (
-    <div className="chat-container">
-      <div className="chat-header">MCP Task Manager</div>
-      <ChatThread
-        adapter={adapter}
-        mcpClient={mcpClient}
-        toolResourceMap={toolResourceMap}
-        onModelContextUpdate={handleModelContextUpdate}
-      />
-    </div>
+    <ChatThread
+      adapter={adapter}
+      mcpClient={mcpClient}
+      toolResourceMap={toolResourceMap}
+      onModelContextUpdate={handleModelContextUpdate}
+    />
   );
 }
