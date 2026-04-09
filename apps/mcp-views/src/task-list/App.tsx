@@ -71,7 +71,18 @@ export function App() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await app?.callServerTool({ name: 'list_tasks', arguments: {} });
+      const result = await app?.callServerTool({ name: 'list_tasks', arguments: {} });
+      if (result?.content) {
+        const text = (result.content as Array<{ type: string; text: string }>)
+          .filter((c) => c.type === 'text')
+          .map((c) => c.text)
+          .join('');
+        if (text) {
+          const parsed = JSON.parse(text);
+          const taskList: Task[] = Array.isArray(parsed) ? parsed : parsed.tasks ?? [];
+          setTasks(taskList);
+        }
+      }
     } catch {
       // ignore
     } finally {
