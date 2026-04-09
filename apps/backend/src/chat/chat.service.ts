@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { TasksService } from '../tasks/tasks.service';
 
 export interface ChatMessage {
@@ -19,7 +19,7 @@ export interface ChatResponse {
   toolCalls: ToolCallRecord[];
 }
 
-/** Tool metadata used to build Anthropic tool definitions and execute calls. */
+/** Tool metadata used to build OpenAI-compatible tool definitions and execute calls. */
 interface ToolDef {
   name: string;
   description: string;
@@ -30,13 +30,17 @@ interface ToolDef {
 
 @Injectable()
 export class ChatService {
-  private readonly anthropic: Anthropic;
+  private readonly client: OpenAI;
+  private readonly model: string;
   private readonly modelVisibleTools: ToolDef[];
 
   constructor(private readonly tasksService: TasksService) {
-    this.anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+    this.client = new OpenAI({
+      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+      apiKey: 'ollama', // Ollama doesn't need a real key
     });
+
+    this.model = process.env.OLLAMA_MODEL || 'qwen3:30b';
 
     // Define tool metadata matching Unit 3 tool registrations.
     // Only model-visible tools are included (visibility includes 'model').
@@ -105,91 +109,111 @@ export class ChatService {
     const systemParts: string[] = [
       'You are an assistant for a task management application. You can list tasks, get task details, create tasks, and summarize tasks using the provided tools.',
       'When the user asks about tasks, use the available tools to fetch or modify data rather than guessing.',
+      'Always respond concisely.',
     ];
 
     if (modelContext) {
       systemParts.push(`The user is currently viewing: ${modelContext}`);
     }
 
-    const tools: Anthropic.Messages.Tool[] = this.modelVisibleTools.map((t) => ({
-      name: t.name,
-      description: t.description,
-      input_schema: t.input_schema as Anthropic.Messages.Tool['input_schema'],
+    const tools: OpenAI.ChatCompletionTool[] = this.modelVisibleTools.map((t) => ({
+      type: 'function' as const,
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.input_schema,
+      },
     }));
 
     const allToolCalls: ToolCallRecord[] = [];
-    const conversationMessages: Anthropic.Messages.MessageParam[] = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const conversationMessages: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemParts.join('\n\n') },
+      ...messages.map(
+        (m): OpenAI.ChatCompletionMessageParam => ({
+          role: m.role,
+          content: m.content,
+        }),
+      ),
+    ];
 
     // Agentic loop: keep calling the model until it stops using tools.
     const MAX_ITERATIONS = 10;
     for (let i = 0; i < MAX_ITERATIONS; i++) {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-5-20250514',
+      const response = await this.client.chat.completions.create({
+        model: this.model,
         max_tokens: 1024,
-        system: systemParts.join('\n\n'),
         messages: conversationMessages,
         tools,
       });
 
-      // Collect assistant content blocks.
-      conversationMessages.push({ role: 'assistant', content: response.content });
-
-      // Check if any tool_use blocks exist.
-      const toolUseBlocks = response.content.filter(
-        (block): block is Anthropic.Messages.ToolUseBlock => block.type === 'tool_use',
-      );
-
-      if (toolUseBlocks.length === 0 || response.stop_reason === 'end_turn') {
-        // No tool calls — extract final text and return.
-        const textBlocks = response.content.filter(
-          (block): block is Anthropic.Messages.TextBlock => block.type === 'text',
-        );
-        const assistantText = textBlocks.map((b) => b.text).join('\n');
-
+      const choice = response.choices[0];
+      if (!choice) {
         return {
-          messages: [{ role: 'assistant', content: assistantText }],
+          messages: [{ role: 'assistant', content: 'No response from model.' }],
           toolCalls: allToolCalls,
         };
       }
 
-      // Execute each tool call and build tool_result messages.
-      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
+      const assistantMessage = choice.message;
 
-      for (const toolUse of toolUseBlocks) {
-        const input = toolUse.input as Record<string, unknown>;
-        const toolDef = this.modelVisibleTools.find((t) => t.name === toolUse.name);
+      // Add assistant message to conversation history
+      conversationMessages.push(assistantMessage);
+
+      // Check for tool calls
+      const toolCallBlocks = assistantMessage.tool_calls || [];
+
+      if (toolCallBlocks.length === 0 || choice.finish_reason === 'stop') {
+        // No tool calls — return the text response
+        return {
+          messages: [{ role: 'assistant', content: assistantMessage.content || '' }],
+          toolCalls: allToolCalls,
+        };
+      }
+
+      // Execute each tool call and build tool result messages
+      for (const toolCall of toolCallBlocks) {
+        if (toolCall.type !== 'function') continue;
+        const fnName = toolCall.function.name;
+        let input: Record<string, unknown> = {};
+        try {
+          input = JSON.parse(toolCall.function.arguments || '{}');
+        } catch {
+          input = {};
+        }
+
+        const toolDef = this.modelVisibleTools.find((t) => t.name === fnName);
         let resultText: string;
 
         try {
-          const result = await this.executeTool(toolUse.name, input);
+          const result = await this.executeTool(fnName, input);
           resultText = typeof result === 'string' ? result : JSON.stringify(result);
         } catch (err) {
           resultText = `Error executing tool: ${(err as Error).message}`;
         }
 
         allToolCalls.push({
-          name: toolUse.name,
+          name: fnName,
           resourceUri: toolDef?.resourceUri,
           input,
           result: resultText,
         });
 
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: toolUse.id,
+        conversationMessages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
           content: resultText,
         });
       }
-
-      conversationMessages.push({ role: 'user', content: toolResults });
     }
 
     // Safety: if we hit max iterations, return what we have.
     return {
-      messages: [{ role: 'assistant', content: 'I was unable to complete the request within the allowed number of steps.' }],
+      messages: [
+        {
+          role: 'assistant',
+          content: 'I was unable to complete the request within the allowed number of steps.',
+        },
+      ],
       toolCalls: allToolCalls,
     };
   }
@@ -200,10 +224,11 @@ export class ChatService {
       case 'list_tasks':
         return this.tasksService.findAll();
 
-      case 'get_task':
+      case 'get_task': {
         const task = this.tasksService.findOne(input.taskId as string);
         if (!task) throw new Error(`Task with id "${input.taskId}" not found`);
         return task;
+      }
 
       case 'create_task':
         return this.tasksService.create({
