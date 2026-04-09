@@ -89,7 +89,9 @@ function AssistantMessage({
           components={{
             Text: ({ text }) => <span>{text}</span>,
             tools: {
-              Fallback: (props) => (
+              Fallback: (props) => {
+                console.log('[Fallback] Rendering tool UI:', props.toolName, props.args, props.result);
+                return (
                 <InlineMcpApp
                   toolName={props.toolName}
                   args={props.args}
@@ -99,7 +101,8 @@ function AssistantMessage({
                   toolResourceMap={toolResourceMap}
                   onModelContextUpdate={onModelContextUpdate}
                 />
-              ),
+                );
+              },
             },
           }}
         />

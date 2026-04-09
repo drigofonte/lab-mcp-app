@@ -63,14 +63,32 @@ export function App() {
     return <div style={styles.loading}>Loading tasks...</div>;
   }
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const handleTaskClick = (taskId: string) => {
     app?.callServerTool({ name: 'get_task', arguments: { taskId } });
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await app?.callServerTool({ name: 'list_tasks', arguments: {} });
+    } catch {
+      // ignore
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
     <div style={styles.container}>
       <style>{cssText}</style>
-      <h2 style={styles.heading}>Tasks</h2>
+      <div style={styles.headerRow}>
+        <h2 style={styles.heading}>Tasks</h2>
+        <button style={styles.refreshButton} onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? '...' : '↻ Refresh'}
+        </button>
+      </div>
       {tasks.length === 0 ? (
         <p style={styles.empty}>No tasks found.</p>
       ) : (
@@ -133,7 +151,18 @@ const cssText = `
 
 const styles: Record<string, React.CSSProperties> = {
   container: { padding: '16px', maxWidth: '640px', margin: '0 auto' },
-  heading: { fontSize: '18px', fontWeight: 600, marginBottom: '12px' },
+  headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' },
+  heading: { fontSize: '18px', fontWeight: 600 },
+  refreshButton: {
+    padding: '4px 12px',
+    borderRadius: '6px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#fff',
+    fontSize: '12px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    color: '#2563eb',
+  },
   loading: { padding: '24px', textAlign: 'center', color: '#6b7280' },
   error: { padding: '24px', textAlign: 'center', color: '#ef4444' },
   empty: { padding: '16px', color: '#6b7280', textAlign: 'center' },

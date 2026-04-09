@@ -27,6 +27,11 @@ const priorityColors: Record<string, string> = {
 
 export function App() {
   const [task, setTask] = useState<Task | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editPriority, setEditPriority] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const { app, isConnected, error } = useApp({
     appInfo: APP_INFO,
@@ -40,10 +45,13 @@ export function App() {
             .join('');
           if (!text) return;
           const parsed = JSON.parse(text);
-          // Handle both direct task object and wrapped { task: ... }
           const t: Task = parsed.task ?? parsed;
           if (t.id && t.title) {
             setTask(t);
+            setEditStatus(t.status);
+            setEditPriority(t.priority);
+            setDirty(false);
+            setSaved(false);
             app.updateModelContext({
               content: [
                 {
@@ -51,10 +59,10 @@ export function App() {
                   text: `Viewing task: ${t.title} (${t.status}, ${t.priority})`,
                 },
               ],
-            }).catch(() => { /* host may not support updateModelContext */ });
+            }).catch(() => {});
           }
         } catch {
-          // ignore parse errors
+          // ignore
         }
       };
     },
@@ -68,19 +76,40 @@ export function App() {
   }
 
   const handleStatusChange = (newStatus: string) => {
-    setTask((prev) => (prev ? { ...prev, status: newStatus } : prev));
-    app?.callServerTool({
-      name: 'update_task',
-      arguments: { taskId: task.id, status: newStatus },
-    });
+    setEditStatus(newStatus);
+    setDirty(newStatus !== task.status || editPriority !== task.priority);
+    setSaved(false);
   };
 
   const handlePriorityChange = (newPriority: string) => {
-    setTask((prev) => (prev ? { ...prev, priority: newPriority } : prev));
-    app?.callServerTool({
-      name: 'update_task',
-      arguments: { taskId: task.id, priority: newPriority },
-    });
+    setEditPriority(newPriority);
+    setDirty(editStatus !== task.status || newPriority !== task.priority);
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await app?.callServerTool({
+        name: 'update_task',
+        arguments: { taskId: task.id, status: editStatus, priority: editPriority },
+      });
+      setTask((prev) => prev ? { ...prev, status: editStatus, priority: editPriority } : prev);
+      setDirty(false);
+      setSaved(true);
+      app?.updateModelContext({
+        content: [
+          {
+            type: 'text',
+            text: `Updated task: ${task.title} (${editStatus}, ${editPriority})`,
+          },
+        ],
+      }).catch(() => {});
+    } catch (err) {
+      console.error('Failed to save:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBackToList = (e: React.MouseEvent) => {
@@ -102,9 +131,9 @@ export function App() {
           <select
             style={{
               ...styles.select,
-              borderColor: statusColors[task.status] ?? '#d1d5db',
+              borderColor: statusColors[editStatus] ?? '#d1d5db',
             }}
-            value={task.status}
+            value={editStatus}
             onChange={(e) => handleStatusChange(e.target.value)}
           >
             {STATUS_OPTIONS.map((s) => (
@@ -119,9 +148,9 @@ export function App() {
           <select
             style={{
               ...styles.select,
-              borderColor: priorityColors[task.priority] ?? '#d1d5db',
+              borderColor: priorityColors[editPriority] ?? '#d1d5db',
             }}
-            value={task.priority}
+            value={editPriority}
             onChange={(e) => handlePriorityChange(e.target.value)}
           >
             {PRIORITY_OPTIONS.map((p) => (
@@ -130,6 +159,20 @@ export function App() {
               </option>
             ))}
           </select>
+        </div>
+        <div style={styles.actions}>
+          {saved && <span style={styles.savedLabel}>Saved ✓</span>}
+          <button
+            style={{
+              ...styles.saveButton,
+              opacity: dirty ? 1 : 0.4,
+              cursor: dirty ? 'pointer' : 'default',
+            }}
+            onClick={handleSave}
+            disabled={!dirty || saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </div>
     </div>
@@ -182,5 +225,29 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     backgroundColor: '#ffffff',
     textTransform: 'capitalize',
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '10px',
+    marginTop: '16px',
+    paddingTop: '12px',
+    borderTop: '1px solid #e5e7eb',
+  },
+  saveButton: {
+    padding: '8px 20px',
+    borderRadius: '6px',
+    border: 'none',
+    backgroundColor: '#2563eb',
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  savedLabel: {
+    fontSize: '12px',
+    color: '#16a34a',
+    fontWeight: 600,
   },
 };

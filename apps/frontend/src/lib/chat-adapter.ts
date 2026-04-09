@@ -92,6 +92,7 @@ export function createChatAdapter(opts: {
         content.push({ type: 'text' as const, text: 'Done.' });
       }
 
+      console.log('[ChatAdapter] Returning content parts:', content.map(c => ({ type: c.type, ...(c.type === 'tool-call' ? { toolName: (c as any).toolName } : {}) })));
       return { content };
     },
   };
