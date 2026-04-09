@@ -20,6 +20,7 @@ interface InlineMcpAppProps {
   mcpClient: Client | null;
   toolResourceMap: Map<string, string>;
   onModelContextUpdate: (ctx: string) => void;
+  onAppMessage?: (text: string) => void;
 }
 
 export function InlineMcpApp({
@@ -29,6 +30,7 @@ export function InlineMcpApp({
   mcpClient,
   toolResourceMap,
   onModelContextUpdate,
+  onAppMessage,
 }: InlineMcpAppProps) {
   // Track the current view — initially from the tool call, but can change
   // when the user navigates within the iframe (e.g., "View All Tasks").
@@ -94,6 +96,16 @@ export function InlineMcpApp({
           toolName={activeToolName}
           toolInput={activeInput}
           toolResult={activeResult}
+          onMessage={async (params) => {
+            const textParts = params.content
+              ?.filter((c: { type: string }) => c.type === 'text')
+              .map((c: { type: string; text: string }) => c.text);
+            const text = textParts?.join('\n');
+            if (text && onAppMessage) {
+              onAppMessage(text);
+            }
+            return {};
+          }}
           onFallbackRequest={async (request: JSONRPCRequest) => {
             if (
               request.method === 'ui/update-model-context' ||

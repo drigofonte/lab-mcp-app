@@ -11,6 +11,21 @@ interface Task {
   priority: string;
 }
 
+function buildModelContextSummary(taskList: Task[]): string {
+  const lines = taskList.map(
+    (t) => `- "${t.title}" (status: ${t.status}, priority: ${t.priority})`,
+  );
+  const todoCount = taskList.filter((t) => t.status === 'todo').length;
+  const inProgressCount = taskList.filter((t) => t.status === 'in-progress').length;
+  const doneCount = taskList.filter((t) => t.status === 'done').length;
+  const highCount = taskList.filter((t) => t.priority === 'high').length;
+  return [
+    `Viewing task list with ${taskList.length} tasks:`,
+    ...lines,
+    `Summary: ${todoCount} todo, ${inProgressCount} in-progress, ${doneCount} done. ${highCount} high priority.`,
+  ].join('\n');
+}
+
 export function App() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,12 +46,11 @@ export function App() {
           const taskList: Task[] = Array.isArray(parsed) ? parsed : parsed.tasks ?? [];
           setTasks(taskList);
 
-          const highPriorityCount = taskList.filter((t) => t.priority === 'high').length;
           app.updateModelContext({
             content: [
               {
                 type: 'text',
-                text: `Viewing task list: ${taskList.length} tasks, ${highPriorityCount} high priority`,
+                text: buildModelContextSummary(taskList),
               },
             ],
           }).catch(() => { /* host may not support updateModelContext */ });
@@ -54,8 +68,16 @@ export function App() {
     return <div style={shared.loading}>Loading tasks...</div>;
   }
 
-  const handleTaskClick = (taskId: string) => {
-    app?.callServerTool({ name: 'get_task', arguments: { taskId } });
+  const handleTaskClick = async (task: Task) => {
+    try {
+      await app?.sendMessage({
+        role: 'user',
+        content: [{ type: 'text', text: `Show me details for the task "${task.title}"` }],
+      });
+    } catch {
+      // Fallback: if sendMessage not supported, use callServerTool
+      app?.callServerTool({ name: 'get_task', arguments: { taskId: task.id } });
+    }
   };
 
   const handleRefresh = async () => {
@@ -71,6 +93,15 @@ export function App() {
           const parsed = JSON.parse(text);
           const taskList: Task[] = Array.isArray(parsed) ? parsed : parsed.tasks ?? [];
           setTasks(taskList);
+
+          app?.updateModelContext({
+            content: [
+              {
+                type: 'text',
+                text: buildModelContextSummary(taskList),
+              },
+            ],
+          }).catch(() => { /* host may not support updateModelContext */ });
         }
       }
     } catch {
@@ -118,7 +149,7 @@ export function App() {
                       style={styles.taskLink}
                       onClick={(e) => {
                         e.preventDefault();
-                        handleTaskClick(task.id);
+                        handleTaskClick(task);
                       }}
                     >
                       {task.title}
