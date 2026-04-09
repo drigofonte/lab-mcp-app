@@ -162,7 +162,7 @@ export class ChatService {
       // Check for tool calls
       const toolCallBlocks = assistantMessage.tool_calls || [];
 
-      if (toolCallBlocks.length === 0 || choice.finish_reason === 'stop') {
+      if (toolCallBlocks.length === 0) {
         // No tool calls — return the text response
         return {
           messages: [{ role: 'assistant', content: assistantMessage.content || '' }],
@@ -171,6 +171,7 @@ export class ChatService {
       }
 
       // Execute each tool call and build tool result messages
+      console.log(`[ChatService] Model called ${toolCallBlocks.length} tool(s):`, toolCallBlocks.map(tc => tc.type === 'function' ? tc.function.name : tc.type));
       for (const toolCall of toolCallBlocks) {
         if (toolCall.type !== 'function') continue;
         const fnName = toolCall.function.name;
