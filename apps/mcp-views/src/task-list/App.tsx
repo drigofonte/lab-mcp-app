@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, useHostStyles } from '@modelcontextprotocol/ext-apps/react';
 import { APP_INFO } from '../shared/app-setup';
+import { colors, cssText, shared, getStatusBadge, getPriorityBadge } from '../shared/theme';
 
 interface Task {
   id: string;
@@ -10,21 +11,10 @@ interface Task {
   priority: string;
 }
 
-const statusColors: Record<string, string> = {
-  todo: '#6b7280',
-  'in-progress': '#2563eb',
-  done: '#16a34a',
-};
-
-const priorityColors: Record<string, string> = {
-  low: '#9ca3af',
-  medium: '#f59e0b',
-  high: '#ef4444',
-};
-
 export function App() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   const { app, isConnected, error } = useApp({
     appInfo: APP_INFO,
@@ -59,9 +49,9 @@ export function App() {
 
   useHostStyles(app, app?.getHostContext());
 
-  if (error) return <div style={styles.error}>Error: {error.message}</div>;
+  if (error) return <div style={shared.error}>Error: {error.message}</div>;
   if (!isConnected || tasks === null) {
-    return <div style={styles.loading}>Loading tasks...</div>;
+    return <div style={shared.loading}>Loading tasks...</div>;
   }
 
   const handleTaskClick = (taskId: string) => {
@@ -91,10 +81,10 @@ export function App() {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...shared.container, maxWidth: '640px' }}>
       <style>{cssText}</style>
       <div style={styles.headerRow}>
-        <h2 style={styles.heading}>Tasks</h2>
+        <h2 style={{ ...shared.heading, fontSize: '18px' }}>Tasks</h2>
         <button style={styles.refreshButton} onClick={handleRefresh} disabled={refreshing}>
           {refreshing ? '...' : '↻ Refresh'}
         </button>
@@ -102,100 +92,97 @@ export function App() {
       {tasks.length === 0 ? (
         <p style={styles.empty}>No tasks found.</p>
       ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Title</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Priority</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map((task) => (
-              <tr key={task.id} style={styles.tr}>
-                <td style={styles.td}>
-                  <a
-                    href="#"
-                    style={styles.link}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleTaskClick(task.id);
-                    }}
-                  >
-                    {task.title}
-                  </a>
-                </td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.badge,
-                      backgroundColor: statusColors[task.status] ?? '#6b7280',
-                    }}
-                  >
-                    {task.status}
-                  </span>
-                </td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.badge,
-                      backgroundColor: priorityColors[task.priority] ?? '#9ca3af',
-                    }}
-                  >
-                    {task.priority}
-                  </span>
-                </td>
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Title</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Priority</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tasks.map((task) => (
+                <tr
+                  key={task.id}
+                  style={{
+                    ...styles.tr,
+                    backgroundColor: hoveredRow === task.id ? colors.mutedBg : 'transparent',
+                  }}
+                  onMouseEnter={() => setHoveredRow(task.id)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                >
+                  <td style={styles.td}>
+                    <a
+                      href="#"
+                      style={styles.taskLink}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleTaskClick(task.id);
+                      }}
+                    >
+                      {task.title}
+                    </a>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ ...shared.badge, ...getStatusBadge(task.status) }}>
+                      {task.status}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ ...shared.badge, ...getPriorityBadge(task.priority) }}>
+                      {task.priority}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
-const cssText = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; background: #ffffff; }
-`;
-
 const styles: Record<string, React.CSSProperties> = {
-  container: { padding: '16px', maxWidth: '640px', margin: '0 auto' },
-  headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' },
-  heading: { fontSize: '18px', fontWeight: 600 },
-  refreshButton: {
-    padding: '4px 12px',
-    borderRadius: '6px',
-    border: '1px solid #d1d5db',
-    backgroundColor: '#fff',
-    fontSize: '12px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    color: '#2563eb',
+  headerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '16px',
   },
-  loading: { padding: '24px', textAlign: 'center', color: '#6b7280' },
-  error: { padding: '24px', textAlign: 'center', color: '#ef4444' },
-  empty: { padding: '16px', color: '#6b7280', textAlign: 'center' },
+  refreshButton: {
+    ...shared.secondaryButton,
+    padding: '6px 12px',
+    fontSize: '12px',
+  },
+  empty: { padding: '16px', color: colors.muted, textAlign: 'center', fontSize: '14px' },
+  tableWrapper: {
+    border: `1px solid ${colors.border}`,
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
   table: { width: '100%', borderCollapse: 'collapse' },
   th: {
     textAlign: 'left',
-    padding: '8px 12px',
-    borderBottom: '2px solid #e5e7eb',
+    padding: '10px 14px',
+    borderBottom: `1px solid ${colors.border}`,
     fontSize: '12px',
-    fontWeight: 600,
+    fontWeight: 500,
     textTransform: 'uppercase',
-    color: '#6b7280',
+    letterSpacing: '0.04em',
+    color: colors.muted,
+    backgroundColor: colors.mutedBg,
   },
-  tr: { borderBottom: '1px solid #f3f4f6' },
-  td: { padding: '10px 12px', fontSize: '14px' },
-  link: { color: '#2563eb', textDecoration: 'none', fontWeight: 500, cursor: 'pointer' },
-  badge: {
-    display: 'inline-block',
-    padding: '2px 8px',
-    borderRadius: '9999px',
-    fontSize: '11px',
-    fontWeight: 600,
-    color: '#ffffff',
-    textTransform: 'capitalize',
+  tr: {
+    borderBottom: `1px solid ${colors.border}`,
+    transition: 'background-color 0.15s ease',
+  },
+  td: { padding: '10px 14px', fontSize: '14px' },
+  taskLink: {
+    color: colors.foreground,
+    textDecoration: 'none',
+    fontWeight: 500,
+    cursor: 'pointer',
   },
 };

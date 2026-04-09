@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, useHostStyles } from '@modelcontextprotocol/ext-apps/react';
 import { APP_INFO } from '../shared/app-setup';
+import { colors, cssText, shared } from '../shared/theme';
 
 interface Task {
   id: string;
@@ -12,18 +13,6 @@ interface Task {
 
 const STATUS_OPTIONS = ['todo', 'in-progress', 'done'];
 const PRIORITY_OPTIONS = ['low', 'medium', 'high'];
-
-const statusColors: Record<string, string> = {
-  todo: '#6b7280',
-  'in-progress': '#2563eb',
-  done: '#16a34a',
-};
-
-const priorityColors: Record<string, string> = {
-  low: '#9ca3af',
-  medium: '#f59e0b',
-  high: '#ef4444',
-};
 
 export function App() {
   const [task, setTask] = useState<Task | null>(null);
@@ -70,9 +59,9 @@ export function App() {
 
   useHostStyles(app, app?.getHostContext());
 
-  if (error) return <div style={styles.error}>Error: {error.message}</div>;
+  if (error) return <div style={shared.error}>Error: {error.message}</div>;
   if (!isConnected || task === null) {
-    return <div style={styles.loading}>Loading task...</div>;
+    return <div style={shared.loading}>Loading task...</div>;
   }
 
   const handleStatusChange = (newStatus: string) => {
@@ -118,21 +107,18 @@ export function App() {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...shared.container, maxWidth: '540px' }}>
       <style>{cssText}</style>
-      <a href="#" style={styles.backLink} onClick={handleBackToList}>
+      <a href="#" style={shared.backLink} onClick={handleBackToList}>
         &larr; Back to list
       </a>
-      <div style={styles.card}>
+      <div style={shared.card}>
         <h2 style={styles.title}>{task.title}</h2>
         {task.description && <p style={styles.description}>{task.description}</p>}
-        <div style={styles.fieldRow}>
-          <label style={styles.label}>Status</label>
+        <div style={shared.fieldRow}>
+          <label style={styles.fieldLabel}>Status</label>
           <select
-            style={{
-              ...styles.select,
-              borderColor: statusColors[editStatus] ?? '#d1d5db',
-            }}
+            style={shared.select}
             value={editStatus}
             onChange={(e) => handleStatusChange(e.target.value)}
           >
@@ -143,13 +129,10 @@ export function App() {
             ))}
           </select>
         </div>
-        <div style={styles.fieldRow}>
-          <label style={styles.label}>Priority</label>
+        <div style={shared.fieldRow}>
+          <label style={styles.fieldLabel}>Priority</label>
           <select
-            style={{
-              ...styles.select,
-              borderColor: priorityColors[editPriority] ?? '#d1d5db',
-            }}
+            style={shared.select}
             value={editPriority}
             onChange={(e) => handlePriorityChange(e.target.value)}
           >
@@ -161,10 +144,10 @@ export function App() {
           </select>
         </div>
         <div style={styles.actions}>
-          {saved && <span style={styles.savedLabel}>Saved ✓</span>}
+          {saved && <span style={styles.savedLabel}>Saved &#10003;</span>}
           <button
             style={{
-              ...styles.saveButton,
+              ...shared.primaryButton,
               opacity: dirty ? 1 : 0.4,
               cursor: dirty ? 'pointer' : 'default',
             }}
@@ -179,52 +162,25 @@ export function App() {
   );
 }
 
-const cssText = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; background: #ffffff; }
-`;
-
 const styles: Record<string, React.CSSProperties> = {
-  container: { padding: '16px', maxWidth: '540px', margin: '0 auto' },
-  loading: { padding: '24px', textAlign: 'center', color: '#6b7280' },
-  error: { padding: '24px', textAlign: 'center', color: '#ef4444' },
-  backLink: {
-    display: 'inline-block',
-    marginBottom: '12px',
-    fontSize: '13px',
-    color: '#2563eb',
-    textDecoration: 'none',
-    cursor: 'pointer',
-  },
-  card: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '20px',
-    backgroundColor: '#fafafa',
-  },
-  title: { fontSize: '20px', fontWeight: 600, marginBottom: '8px' },
-  description: { fontSize: '14px', color: '#4b5563', marginBottom: '16px', lineHeight: '1.5' },
-  fieldRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '12px',
-  },
-  label: {
-    fontSize: '13px',
+  title: {
+    fontSize: '20px',
     fontWeight: 600,
-    color: '#6b7280',
+    color: colors.foreground,
+    marginBottom: '8px',
+  },
+  description: {
+    fontSize: '14px',
+    color: colors.muted,
+    marginBottom: '16px',
+    lineHeight: '1.5',
+  },
+  fieldLabel: {
+    fontSize: '13px',
+    fontWeight: 500,
+    color: colors.foreground,
     width: '64px',
     flexShrink: 0,
-  },
-  select: {
-    padding: '6px 10px',
-    borderRadius: '6px',
-    border: '2px solid #d1d5db',
-    fontSize: '13px',
-    cursor: 'pointer',
-    backgroundColor: '#ffffff',
-    textTransform: 'capitalize',
   },
   actions: {
     display: 'flex',
@@ -232,22 +188,12 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'flex-end',
     gap: '10px',
     marginTop: '16px',
-    paddingTop: '12px',
-    borderTop: '1px solid #e5e7eb',
-  },
-  saveButton: {
-    padding: '8px 20px',
-    borderRadius: '6px',
-    border: 'none',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontSize: '13px',
-    fontWeight: 600,
-    cursor: 'pointer',
+    paddingTop: '14px',
+    borderTop: `1px solid ${colors.border}`,
   },
   savedLabel: {
-    fontSize: '12px',
-    color: '#16a34a',
-    fontWeight: 600,
+    fontSize: '13px',
+    color: colors.success,
+    fontWeight: 500,
   },
 };

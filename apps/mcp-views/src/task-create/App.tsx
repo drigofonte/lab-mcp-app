@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, useHostStyles } from '@modelcontextprotocol/ext-apps/react';
 import { APP_INFO } from '../shared/app-setup';
+import { colors, cssText, shared } from '../shared/theme';
 
 interface TaskDraft {
   title: string;
@@ -65,16 +66,16 @@ export function App() {
 
   useHostStyles(app, app?.getHostContext());
 
-  if (error) return <div style={styles.error}>Error: {error.message}</div>;
+  if (error) return <div style={shared.error}>Error: {error.message}</div>;
   if (!isConnected || draft === null) {
-    return <div style={styles.loading}>Preparing task...</div>;
+    return <div style={shared.loading}>Preparing task...</div>;
   }
 
   if (confirmed) {
     return (
-      <div style={styles.container}>
+      <div style={{ ...shared.container, maxWidth: '480px' }}>
         <style>{cssText}</style>
-        <div style={styles.card}>
+        <div style={shared.card}>
           <div style={styles.successHeader}>
             <span style={styles.checkmark}>&#10003;</span>
             <span style={styles.successText}>Task Created</span>
@@ -82,7 +83,7 @@ export function App() {
           <h2 style={styles.title}>{draft.title}</h2>
           {draft.description && <p style={styles.description}>{draft.description}</p>}
           <button
-            style={styles.primaryButton}
+            style={shared.primaryButton}
             onClick={() => app?.callServerTool({ name: 'list_tasks', arguments: {} })}
           >
             View All Tasks
@@ -125,35 +126,35 @@ export function App() {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...shared.container, maxWidth: '480px' }}>
       <style>{cssText}</style>
-      <div style={styles.card}>
+      <div style={shared.card}>
         <h2 style={styles.formTitle}>Review New Task</h2>
         <p style={styles.subtitle}>The AI proposed this task. Edit any fields before creating.</p>
 
-        <div style={styles.field}>
-          <label style={styles.label}>Title</label>
+        <div style={shared.field}>
+          <label style={shared.label}>Title</label>
           <input
-            style={styles.input}
+            style={shared.input}
             value={draft.title}
             onChange={(e) => update('title', e.target.value)}
           />
         </div>
 
-        <div style={styles.field}>
-          <label style={styles.label}>Description</label>
+        <div style={shared.field}>
+          <label style={shared.label}>Description</label>
           <textarea
-            style={{ ...styles.input, minHeight: 60, resize: 'vertical' }}
+            style={{ ...shared.input, minHeight: 60, resize: 'vertical' } as React.CSSProperties}
             value={draft.description}
             onChange={(e) => update('description', e.target.value)}
           />
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ ...styles.field, flex: 1 }}>
-            <label style={styles.label}>Status</label>
+          <div style={{ ...shared.field, flex: 1 }}>
+            <label style={shared.label}>Status</label>
             <select
-              style={styles.select}
+              style={shared.select}
               value={draft.status}
               onChange={(e) => update('status', e.target.value)}
             >
@@ -165,10 +166,10 @@ export function App() {
             </select>
           </div>
 
-          <div style={{ ...styles.field, flex: 1 }}>
-            <label style={styles.label}>Priority</label>
+          <div style={{ ...shared.field, flex: 1 }}>
+            <label style={shared.label}>Priority</label>
             <select
-              style={styles.select}
+              style={shared.select}
               value={draft.priority}
               onChange={(e) => update('priority', e.target.value)}
             >
@@ -182,11 +183,15 @@ export function App() {
         </div>
 
         <div style={styles.actions}>
-          <button style={styles.cancelButton} onClick={handleCancel}>
+          <button style={shared.secondaryButton} onClick={handleCancel}>
             Cancel
           </button>
           <button
-            style={styles.primaryButton}
+            style={{
+              ...shared.primaryButton,
+              opacity: !draft.title.trim() ? 0.4 : 1,
+              cursor: !draft.title.trim() ? 'default' : 'pointer',
+            }}
             onClick={handleConfirm}
             disabled={saving || !draft.title.trim()}
           >
@@ -198,85 +203,22 @@ export function App() {
   );
 }
 
-const cssText = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; background: #ffffff; }
-`;
-
 const styles: Record<string, React.CSSProperties> = {
-  container: { padding: '16px', maxWidth: '480px', margin: '0 auto' },
-  loading: { padding: '24px', textAlign: 'center', color: '#6b7280' },
-  error: { padding: '24px', textAlign: 'center', color: '#ef4444' },
-  card: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '20px',
-    backgroundColor: '#fafafa',
-  },
-  formTitle: { fontSize: '16px', fontWeight: 600, marginBottom: '4px' },
-  subtitle: { fontSize: '13px', color: '#6b7280', marginBottom: '16px' },
-  field: { marginBottom: '12px' },
-  label: {
-    display: 'block',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#374151',
-    marginBottom: '4px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  input: {
-    width: '100%',
-    padding: '8px 10px',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    backgroundColor: '#fff',
-  },
-  select: {
-    width: '100%',
-    padding: '8px 10px',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    backgroundColor: '#fff',
-    textTransform: 'capitalize',
-  },
+  formTitle: { fontSize: '18px', fontWeight: 600, color: colors.foreground, marginBottom: '4px' },
+  subtitle: { fontSize: '13px', color: colors.muted, marginBottom: '18px' },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: '8px',
-    marginTop: '16px',
-  },
-  primaryButton: {
-    padding: '8px 20px',
-    borderRadius: '6px',
-    border: 'none',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    fontSize: '13px',
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  cancelButton: {
-    padding: '8px 20px',
-    borderRadius: '6px',
-    border: '1px solid #d1d5db',
-    backgroundColor: '#fff',
-    color: '#374151',
-    fontSize: '13px',
-    fontWeight: 500,
-    cursor: 'pointer',
+    marginTop: '18px',
+    paddingTop: '14px',
+    borderTop: `1px solid ${colors.border}`,
   },
   successHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    marginBottom: '12px',
+    marginBottom: '14px',
   },
   checkmark: {
     display: 'inline-flex',
@@ -285,12 +227,12 @@ const styles: Record<string, React.CSSProperties> = {
     width: '24px',
     height: '24px',
     borderRadius: '50%',
-    backgroundColor: '#16a34a',
-    color: '#fff',
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
     fontSize: '14px',
     fontWeight: 700,
   },
-  successText: { fontSize: '14px', fontWeight: 600, color: '#16a34a' },
-  title: { fontSize: '18px', fontWeight: 600, marginBottom: '6px' },
-  description: { fontSize: '14px', color: '#4b5563', marginBottom: '14px', lineHeight: 1.5 },
+  successText: { fontSize: '14px', fontWeight: 600, color: '#15803d' },
+  title: { fontSize: '18px', fontWeight: 600, color: colors.foreground, marginBottom: '6px' },
+  description: { fontSize: '14px', color: colors.muted, marginBottom: '16px', lineHeight: 1.5 },
 };
