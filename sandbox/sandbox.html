@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MCP App Sandbox Proxy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; }
+  </style>
+</head>
+<body>
+<script>
+(function () {
+  "use strict";
+
+  const ALLOWED_PARENT_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+  ];
+
+  let innerFrame = null;
+
+  function isAllowedParentOrigin(origin) {
+    return ALLOWED_PARENT_ORIGINS.includes(origin);
+  }
+
+  function handleMessage(event) {
+    // Validate origin — accept messages from parent (host) or inner iframe
+    const fromParent = isAllowedParentOrigin(event.origin);
+    const fromInner = innerFrame && event.source === innerFrame.contentWindow;
+
+    if (!fromParent && !fromInner) {
+      return;
+    }
+
+    const data = event.data;
+    if (!data || typeof data !== "object" || data.jsonrpc !== "2.0") {
+      return;
+    }
+
+    // Parent sends the MCP App HTML to render
+    if (fromParent && data.method === "ui/notifications/sandbox-resource-ready") {
+      const params = data.params || {};
+      const html = params.html || "";
+      const sandboxAttr = params.sandbox || "allow-scripts allow-same-origin allow-forms";
+
+      // Remove any existing inner iframe
+      if (innerFrame) {
+        innerFrame.remove();
+        innerFrame = null;
+      }
+
+      // Create sandboxed inner iframe
+      innerFrame = document.createElement("iframe");
+      innerFrame.setAttribute("sandbox", sandboxAttr);
+      document.body.appendChild(innerFrame);
+
+      // Write the MCP App HTML into the inner iframe
+      const doc = innerFrame.contentDocument || innerFrame.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      return;
+    }
+
+    // Relay messages bidirectionally
+    if (fromParent && innerFrame && innerFrame.contentWindow) {
+      // Forward parent messages to inner iframe
+      innerFrame.contentWindow.postMessage(data, "*");
+    } else if (fromInner && window.parent !== window) {
+      // Forward inner iframe messages to parent
+      window.parent.postMessage(data, "*");
+    }
+  }
+
+  window.addEventListener("message", handleMessage);
+
+  // Notify parent that the sandbox proxy is ready
+  if (window.parent !== window) {
+    window.parent.postMessage(
+      { jsonrpc: "2.0", method: "ui/notifications/sandbox-proxy-ready" },
+      "*"
+    );
+  }
+})();
+</script>
+</body>
+</html>

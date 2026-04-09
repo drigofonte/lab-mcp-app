@@ -1,0 +1,31 @@
+node_modules
+dist
+.env
+.env.local
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Coverage
+coverage
+
+# Temp
+.tmp
+*.tmp
