@@ -12,12 +12,24 @@ if (!entry) {
 }
 
 export default defineConfig({
-  plugins: [react(), viteSingleFile()],
+  plugins: [
+    react({
+      // Disable Fast Refresh — it injects a runtime that breaks in sandboxed iframes
+      fastRefresh: false,
+    }),
+    viteSingleFile(),
+  ],
+  resolve: {
+    // Ensure a single copy of React in the bundle — prevents hooks errors
+    // when @modelcontextprotocol/ext-apps/react also imports React
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     rollupOptions: {
       input: resolve(__dirname, `src/${entry}/index.html`),
     },
     outDir: 'dist',
     emptyOutDir: false,
+    minify: true,
   },
 });

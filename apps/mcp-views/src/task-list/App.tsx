@@ -24,6 +24,7 @@ const priorityColors: Record<string, string> = {
 
 export function App() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const { app, isConnected, error } = useApp({
     appInfo: APP_INFO,
@@ -62,8 +63,6 @@ export function App() {
   if (!isConnected || tasks === null) {
     return <div style={styles.loading}>Loading tasks...</div>;
   }
-
-  const [refreshing, setRefreshing] = useState(false);
 
   const handleTaskClick = (taskId: string) => {
     app?.callServerTool({ name: 'get_task', arguments: { taskId } });
