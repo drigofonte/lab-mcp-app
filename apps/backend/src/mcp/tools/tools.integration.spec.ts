@@ -48,19 +48,39 @@ describe('MCP Tools', () => {
   });
 
   describe('CreateTaskTool', () => {
-    it('should create a new task', async () => {
+    it('should stage a task when confirmed is false', async () => {
       const tool = new CreateTaskTool(tasksService);
       const result = await tool.handle({
         title: 'New Task',
         description: 'A test task',
         status: 'todo',
         priority: 'high',
+        confirmed: false,
       });
 
       expect(result.content).toHaveLength(1);
       const task = JSON.parse(result.content[0].text);
       expect(task.title).toBe('New Task');
       expect(task.priority).toBe('high');
+      expect(task.confirmed).toBe(false);
+      // Should NOT have an id since it's not persisted
+      expect(task.id).toBeUndefined();
+    });
+
+    it('should persist a task when confirmed is true', async () => {
+      const tool = new CreateTaskTool(tasksService);
+      const result = await tool.handle({
+        title: 'New Task',
+        description: 'A test task',
+        status: 'todo',
+        priority: 'high',
+        confirmed: true,
+      });
+
+      expect(result.content).toHaveLength(1);
+      const task = JSON.parse(result.content[0].text);
+      expect(task.title).toBe('New Task');
+      expect(task.confirmed).toBe(true);
       expect(task.id).toBeDefined();
       expect(tasksService.findAll().length).toBe(6);
     });

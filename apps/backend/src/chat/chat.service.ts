@@ -231,13 +231,17 @@ export class ChatService {
         return task;
       }
 
-      case 'create_task':
-        return this.tasksService.create({
+      case 'create_task': {
+        // AI always calls without confirmed — stage for review, don't persist
+        const proposed = {
           title: input.title as string,
           description: (input.description as string) || '',
           status: (input.status as 'todo' | 'in-progress' | 'done') || 'todo',
           priority: (input.priority as 'low' | 'medium' | 'high') || 'medium',
-        });
+          confirmed: false,
+        };
+        return proposed;
+      }
 
       case 'summarize_tasks': {
         const tasks = this.tasksService.findAll();
