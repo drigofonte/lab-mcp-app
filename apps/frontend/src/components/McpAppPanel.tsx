@@ -46,15 +46,22 @@ export function McpAppPanel({
         toolInput={activeToolCall.input}
         toolResult={activeToolCall.result}
         onFallbackRequest={async (request: JSONRPCRequest) => {
-          if (request.method === 'ui/updateModelContext') {
+          console.log('[McpAppPanel] fallbackRequest:', request.method, request.params);
+          if (
+            request.method === 'ui/update-model-context' ||
+            request.method === 'ui/updateModelContext'
+          ) {
             const params = request.params as Record<string, unknown> | undefined;
             const content = params?.content as Array<{ type: string; text: string }> | undefined;
-            if (content?.[0]?.text) {
-              onModelContextUpdate(content[0].text);
+            const structuredContent = params?.structuredContent as Record<string, unknown> | undefined;
+            const text = content?.[0]?.text ?? JSON.stringify(structuredContent ?? {});
+            if (text) {
+              onModelContextUpdate(text);
             }
             return {};
           }
-          throw new Error(`Unhandled method: ${request.method}`);
+          // Return empty object for any other unhandled method to avoid errors
+          return {};
         }}
         onCallTool={async (params) => {
           const result = await mcpClient.callTool({

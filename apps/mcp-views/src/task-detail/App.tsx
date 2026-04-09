@@ -51,7 +51,7 @@ export function App() {
                   text: `Viewing task: ${t.title} (${t.status}, ${t.priority})`,
                 },
               ],
-            });
+            }).catch(() => { /* host may not support updateModelContext */ });
           }
         } catch {
           // ignore parse errors

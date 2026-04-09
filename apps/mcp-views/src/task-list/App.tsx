@@ -48,7 +48,7 @@ export function App() {
                 text: `Viewing task list: ${taskList.length} tasks, ${highPriorityCount} high priority`,
               },
             ],
-          });
+          }).catch(() => { /* host may not support updateModelContext */ });
         } catch {
           // ignore parse errors
         }

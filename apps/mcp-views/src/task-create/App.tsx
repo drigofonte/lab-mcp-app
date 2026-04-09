@@ -33,7 +33,7 @@ export function App() {
         setTask(t);
         app.updateModelContext({
           content: [{ type: 'text', text: `Created new task: ${t.title}` }],
-        });
+        }).catch(() => { /* host may not support updateModelContext */ });
       };
 
       // Race condition: render from whichever arrives first
