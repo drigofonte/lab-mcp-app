@@ -3,22 +3,18 @@ import type {
   ChatModelRunOptions,
   ChatModelRunResult,
 } from '@assistant-ui/react';
-import type { ChatMessage, ChatResponse, ToolCallRecord } from '../types';
-
-/**
- * Callback invoked when the backend returns tool calls with resourceUris,
- * so the App shell can update the MCP App panel.
- */
-export type OnToolCallsReceived = (toolCalls: ToolCallRecord[]) => void;
+import type { ChatMessage, ChatResponse } from '../types';
 
 /**
  * ChatModelAdapter that proxies to the NestJS backend POST /api/chat endpoint.
  * The backend runs the agentic tool-use loop and returns the final assistant
  * message plus all tool calls that were executed.
+ *
+ * Tool calls with a resourceUri are returned as tool-call content parts so
+ * assistant-ui can render them inline via the tools.Fallback component.
  */
 export function createChatAdapter(opts: {
   getModelContext: () => string | undefined;
-  onToolCalls: OnToolCallsReceived;
 }): ChatModelAdapter {
   return {
     async run({ messages, abortSignal }: ChatModelRunOptions): Promise<ChatModelRunResult> {
@@ -59,20 +55,44 @@ export function createChatAdapter(opts: {
 
       const data: ChatResponse = await response.json();
 
-      // Notify the app about tool calls (so it can update the MCP App panel).
-      if (data.toolCalls && data.toolCalls.length > 0) {
-        opts.onToolCalls(data.toolCalls);
+      // Build content parts: tool-call parts first, then text.
+      const content: ChatModelRunResult['content'] = [];
+
+      // Add tool-call parts for MCP App tools (those with a resourceUri).
+      if (data.toolCalls) {
+        for (const tc of data.toolCalls) {
+          if (tc.resourceUri) {
+            content.push({
+              type: 'tool-call' as const,
+              toolCallId: `tc-${Date.now()}-${tc.name}`,
+              toolName: tc.name,
+              args: tc.input,
+              argsText: JSON.stringify(tc.input),
+              result: {
+                text: typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result),
+                resourceUri: tc.resourceUri,
+              },
+            });
+          }
+        }
       }
 
-      // Return assistant text as content for assistant-ui.
+      // Add text response.
       const assistantText = data.messages
         .filter((m) => m.role === 'assistant')
         .map((m) => m.content)
         .join('\n');
 
-      return {
-        content: [{ type: 'text' as const, text: assistantText || 'Done.' }],
-      };
+      if (assistantText) {
+        content.push({ type: 'text' as const, text: assistantText });
+      }
+
+      // Ensure we always return at least one content part.
+      if (content.length === 0) {
+        content.push({ type: 'text' as const, text: 'Done.' });
+      }
+
+      return { content };
     },
   };
 }

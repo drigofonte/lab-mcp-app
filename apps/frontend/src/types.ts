@@ -14,12 +14,3 @@ export interface ChatResponse {
   messages: ChatMessage[];
   toolCalls: ToolCallRecord[];
 }
-
-export interface ActiveToolCall {
-  name: string;
-  input: Record<string, unknown>;
-  result: { content: Array<{ type: 'text'; text: string }> };
-  resourceUri?: string;
-  /** Unique key to force React re-mount of AppRenderer on each tool call */
-  _key?: number;
-}

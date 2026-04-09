@@ -6,16 +6,60 @@ import {
   ComposerPrimitive,
   type ChatModelAdapter,
 } from '@assistant-ui/react';
-import type { ReactNode } from 'react';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InlineMcpApp } from './InlineMcpApp';
 
-function ChatMessages() {
+interface ChatThreadProps {
+  adapter: ChatModelAdapter;
+  mcpClient: Client | null;
+  toolResourceMap: Map<string, string>;
+  onModelContextUpdate: (ctx: string) => void;
+}
+
+export function ChatThread({ adapter, mcpClient, toolResourceMap, onModelContextUpdate }: ChatThreadProps) {
+  const runtime = useLocalRuntime(adapter);
+
   return (
-    <ThreadPrimitive.Messages
-      components={{
-        UserMessage,
-        AssistantMessage,
-      }}
-    />
+    <AssistantRuntimeProvider runtime={runtime}>
+      <ThreadContent
+        mcpClient={mcpClient}
+        toolResourceMap={toolResourceMap}
+        onModelContextUpdate={onModelContextUpdate}
+      />
+    </AssistantRuntimeProvider>
+  );
+}
+
+function ThreadContent({
+  mcpClient,
+  toolResourceMap,
+  onModelContextUpdate,
+}: {
+  mcpClient: Client | null;
+  toolResourceMap: Map<string, string>;
+  onModelContextUpdate: (ctx: string) => void;
+}) {
+  return (
+    <ThreadPrimitive.Root style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <ThreadPrimitive.Viewport className="messages-viewport">
+        <ThreadPrimitive.Empty>
+          <div className="empty-state">Send a message to get started.</div>
+        </ThreadPrimitive.Empty>
+        <ThreadPrimitive.Messages
+          components={{
+            UserMessage,
+            AssistantMessage: () => (
+              <AssistantMessage
+                mcpClient={mcpClient}
+                toolResourceMap={toolResourceMap}
+                onModelContextUpdate={onModelContextUpdate}
+              />
+            ),
+          }}
+        />
+      </ThreadPrimitive.Viewport>
+      <Composer />
+    </ThreadPrimitive.Root>
   );
 }
 
@@ -29,11 +73,36 @@ function UserMessage() {
   );
 }
 
-function AssistantMessage() {
+function AssistantMessage({
+  mcpClient,
+  toolResourceMap,
+  onModelContextUpdate,
+}: {
+  mcpClient: Client | null;
+  toolResourceMap: Map<string, string>;
+  onModelContextUpdate: (ctx: string) => void;
+}) {
   return (
     <MessagePrimitive.Root className="message-assistant">
       <div className="message-assistant-bubble">
-        <MessagePrimitive.Content />
+        <MessagePrimitive.Content
+          components={{
+            Text: ({ text }) => <span>{text}</span>,
+            tools: {
+              Fallback: (props) => (
+                <InlineMcpApp
+                  toolName={props.toolName}
+                  args={props.args}
+                  result={props.result}
+                  addResult={props.addResult}
+                  mcpClient={mcpClient}
+                  toolResourceMap={toolResourceMap}
+                  onModelContextUpdate={onModelContextUpdate}
+                />
+              ),
+            },
+          }}
+        />
       </div>
     </MessagePrimitive.Root>
   );
@@ -50,35 +119,5 @@ function Composer() {
         Send
       </ComposerPrimitive.Send>
     </ComposerPrimitive.Root>
-  );
-}
-
-function ThreadContent({ appEmbed }: { appEmbed?: ReactNode }) {
-  return (
-    <ThreadPrimitive.Root style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <ThreadPrimitive.Viewport className="messages-viewport">
-        <ThreadPrimitive.Empty>
-          <div className="empty-state">Send a message to get started.</div>
-        </ThreadPrimitive.Empty>
-        <ChatMessages />
-        {appEmbed}
-      </ThreadPrimitive.Viewport>
-      <Composer />
-    </ThreadPrimitive.Root>
-  );
-}
-
-interface ChatThreadProps {
-  adapter: ChatModelAdapter;
-  appEmbed?: ReactNode;
-}
-
-export function ChatThread({ adapter, appEmbed }: ChatThreadProps) {
-  const runtime = useLocalRuntime(adapter);
-
-  return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadContent appEmbed={appEmbed} />
-    </AssistantRuntimeProvider>
   );
 }
