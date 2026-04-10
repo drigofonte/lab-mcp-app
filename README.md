@@ -146,6 +146,16 @@ The AI calls `summarize_tasks` (model-only tool) and reasons about task counts a
 
 Similar to above — the AI uses `summarize_tasks` or `list_tasks` to answer without rendering a view.
 
+### Interacting with the MCP App Views
+
+**Click a task in the list:**
+
+When the task list is visible, click any task title. This uses `sendMessage` to post a message to the chat (e.g., "Show me details for 'Design database schema'"). The AI picks it up and responds with the detail view — no typing required.
+
+**Edit a task and refresh the list:**
+
+After the AI shows you a task's details, change the status or priority using the dropdowns and click "Save Changes". Then navigate back to the list (click "Back to list" or ask the AI to show your tasks). Click the "Refresh" button on the task list to see the updated data — the list re-fetches from the server and reflects your changes.
+
 ### Multi-Step Conversations
 
 > Show me my tasks. Now create a new one for setting up CI/CD.
