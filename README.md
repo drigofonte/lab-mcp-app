@@ -96,6 +96,66 @@ OLLAMA_BASE_URL=http://localhost:11434/v1   # default
 OLLAMA_MODEL=qwen3:30b                      # default
 ```
 
+## Example Prompts
+
+### Listing Tasks
+
+> Show me all my tasks
+
+The AI calls `list_tasks` and the task list renders inline with all current tasks.
+
+> What am I looking at?
+
+After the task list is visible, the AI references specific task names and counts from the current view — it "sees" the UI via `updateModelContext`.
+
+### Creating Tasks
+
+**Minimal (AI asks for details):**
+
+> Create a new task
+
+The AI sees that `title` and `description` are required but not provided, so it asks for them. Once you reply with the details, the review form appears.
+
+**With all details (form appears immediately):**
+
+> Create a task called "Write integration tests" with description "Add end-to-end tests for the task creation flow", high priority, status todo
+
+The AI has everything it needs — it calls `create_task` immediately and the editable review form appears inline. Modify any field, then click "Create Task" to persist.
+
+### Viewing Task Details
+
+**By name:**
+
+> Show me the details for "Design database schema"
+
+The AI calls `get_task` and the detail view renders inline with status/priority dropdowns and a Save button.
+
+**Conditional — check then create:**
+
+> Do I have a task about writing documentation? If not, create one.
+
+The AI calls `list_tasks` or `summarize_tasks` to check, then either shows the existing task or calls `create_task` to propose a new one.
+
+### Workload Summary
+
+> What's my workload looking like?
+
+The AI calls `summarize_tasks` (model-only tool) and reasons about task counts and priorities. No UI renders — the response is purely conversational.
+
+> How many high priority tasks do I have?
+
+Similar to above — the AI uses `summarize_tasks` or `list_tasks` to answer without rendering a view.
+
+### Multi-Step Conversations
+
+> Show me my tasks. Now create a new one for setting up CI/CD.
+
+The AI handles the sequence: first `list_tasks` (renders the list), then after you provide details, `create_task` (renders the review form).
+
+> Is there anything in progress? Mark "Design database schema" as done.
+
+The AI checks the task list, finds the task, and describes it — but it can't update status directly because `update_task` is an app-only tool. It will tell you to use the detail view's Save button instead.
+
 ## Demo Script (~5 minutes)
 
 1. **First impression** — Open the app. Ask "show me my tasks". The task list renders inline in the chat with seed data.
